@@ -18,9 +18,22 @@ Marcelino Noguero Souza 16011538
 #include <signal.h>
 
 //variaveis para a criacao do socket de dados
-int s_dados;
 
-int connectServer(char *nomeServidor, char *portaServidor)
+struct serverInfo {
+    char servername[10];
+    unsigned short port;
+};
+
+struct data {
+    char servername[10];
+    int requestType;
+    int data;
+};
+
+int s_dados;
+struct serverInfo serverDirectory;
+
+int connectServer(char *nomeServidor, unsigned short portaServidor)
 {
     unsigned short port;
     struct hostent *hostnm;
@@ -32,7 +45,7 @@ int connectServer(char *nomeServidor, char *portaServidor)
         return 0;
     }
 
-    port = (unsigned short)atoi(portaServidor);
+    port = portaServidor;
 
     server.sin_family = AF_INET;
     server.sin_port = htons(port);
@@ -49,27 +62,71 @@ int connectServer(char *nomeServidor, char *portaServidor)
     return 1;
 }
 
-void encerraCliente() {
-
+void encerraConexao() {
     close(s_dados);
-    system("clear");
+}
+
+void encerraCliente() {
+    encerraConexao();
     exit(0);
 }
 
-int enviarDado(int dado) {
-    if (send(s_dados, &dado, sizeof(dado), 0) <= 0){
+int sendData(int dado) {
+
+    struct data message;
+    message.data = dado;
+    message.requestType = 1;
+
+    if (send(s_dados, &message, sizeof(message), 0) <= 0){
         return 0;
     }
 
+    printf("Dado enviado: %d\n", dado);
+
     return 1;
+}
+
+int receiveData() {
+
+    struct data message;
+    int receivedData;
+    message.requestType = 2;
+
+    if (send(s_dados, &message, sizeof(message), 0) <= 0){
+        return 0;
+    }
+
+    if (recv(s_dados, &receivedData, sizeof(receivedData), 0) <= 0){
+        return 0;
+    }
+
+    printf("Dado recebido: %d\n", receivedData);
+
+    return 1;
+}
+
+void receiveDirectory() {
+
+    connectServer("localhost", 8000);
+
+    if (recv(s_dados, &serverDirectory, sizeof(serverDirectory), 0) <= 0){
+		printf("Erro ao receber dados\n");
+	}
+
+    close(s_dados);
 }
 
 // MAIN FUNCTION
 int main(){
 
     signal(SIGINT,encerraCliente);
-    connectServer("localhost", "8000");
-    enviarDado(10);
+    receiveDirectory();
 
+    connectServer(serverDirectory.servername, serverDirectory.port);
+    sendData(10);
+    encerraConexao();
+    
+    connectServer(serverDirectory.servername, serverDirectory.port);
+    receiveData();
     encerraCliente();
 }

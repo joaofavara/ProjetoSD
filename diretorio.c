@@ -26,18 +26,19 @@ Marcelino Noguero Souza 16011538
  */
 
 #define MaxArray 10
-int mainSocket;                     /* Socket para aceitar conexoes       */
-int valorDado;
+int s;                     /* Socket para aceitar conexoes       */
 
 struct args{
 	int ns;
+	int s;
+  char servername[10];
+  unsigned short port;
 	int thread_id;
 };
 
-struct data {
+struct serverInfo {
     char servername[10];
-    int requestType;
-    int data;
+    unsigned short port;
 };
 
 struct args parameters;
@@ -46,29 +47,21 @@ unsigned short port;
 int countClients = 0;
 
 void encerraCliente() {
-    close(mainSocket);
+    close(s);
     system("clear");
     exit(0);
 }
 
 void *atender_cliente(void* parameters){
 	struct args args = *((struct args*) parameters);
-	struct data dado;
+  struct serverInfo serverDirectory;
 
-	if (recv(args.ns, &dado, sizeof(dado), 0) <= 0){
+  strcpy(serverDirectory.servername, args.servername);
+  serverDirectory.port = args.port;
+
+	if (send(args.ns, &serverDirectory, sizeof(serverDirectory), 0) <= 0){
 		printf("Erro ao receber dados de %d\n", args.thread_id);
 	}
-
-  if(dado.requestType == 1) {
-    valorDado = dado.data;
-	  printf("Dado Recebido: %d Cliente: %d\n", dado.data, args.thread_id);
-  }
-  else if(dado.requestType == 2) {
-    if (send(args.ns, &valorDado, sizeof(valorDado), 0) <= 0){
-		  printf("Erro ao receber dados de %d\n", args.thread_id);
-	  }
-	  printf("Dado Enviado: Cliente: %d\n", args.thread_id);
-  }
 
 	close(args.ns);
 	pthread_exit(NULL);
@@ -85,13 +78,13 @@ int main(int argc, char **argv)
 
   if (argc != 2)
   {
-    fprintf(stderr, "\nUse: %socket porta\n", argv[0]);
+    fprintf(stderr, "\nUse: %s porta\n", argv[0]);
     exit(1);
   }
 
   port = (unsigned short) atoi(argv[1]);
 
-  if ((mainSocket = socket(PF_INET, SOCK_STREAM, 0)) < 0)
+  if ((s = socket(PF_INET, SOCK_STREAM, 0)) < 0)
   {
     perror("Socket()");
     exit(2);
@@ -104,13 +97,13 @@ int main(int argc, char **argv)
   printf("\nPorta utilizada: %d", ntohs(server.sin_port));
   printf("\nIP utilizado: %d\n\n", ntohs(server.sin_addr.s_addr));
 
-  if (bind(mainSocket, (struct sockaddr *)&server, sizeof(server)) < 0)
+  if (bind(s, (struct sockaddr *)&server, sizeof(server)) < 0)
   {
     perror("Bind()");
     exit(3);
   }
 
-  if (listen(mainSocket, 1) != 0)
+  if (listen(s, 1) != 0)
   {
     perror("Listen()");
     exit(4);
@@ -118,22 +111,24 @@ int main(int argc, char **argv)
 
   while(1)
   {
-
 	  namelen = sizeof(client);
-	  if ((ns = accept(mainSocket, (struct sockaddr *) &client, (socklen_t *) &namelen)) == -1)
+	  if ((ns = accept(s, (struct sockaddr *) &client, (socklen_t *) &namelen)) == -1)
 	  {
       perror("Accept()");
       exit(5);
 	  }
 		parameters.ns = ns;
+		parameters.s = s;
 		parameters.thread_id = countClients;
+    strcpy(parameters.servername, "localhost");
+    parameters.port = 8001;
 
 		if (pthread_create(&thread_id[countClients], NULL, atender_cliente, (void* )&parameters))
     {
         printf("ERRO: impossivel criar uma thread\n");
         exit(-1);
     }
-		// printf("Thread[%i] criada\n", countClients);
+
 		countClients++;
 	}
 }
