@@ -86,7 +86,7 @@ void *atender_cliente(void* parameters){
       close(arg.ns);
 	    pthread_exit(NULL);
 	  }
-	  printf("Dado Enviado: %d Cliente: %d (%d)\n",dado.data, arg.thread_id, arg.ns);
+	  printf("Dado Enviado: %d Cliente: %d (%d)\n",valorDado, arg.thread_id, arg.ns);
     pthread_mutex_unlock(&locker);
   }
 
@@ -124,7 +124,7 @@ void *updateData() {
   }
 
   server.sin_family = AF_INET;   
-  server.sin_port   = htons((unsigned short)4000);       
+  server.sin_port   = htons((unsigned short)4001);       
   server.sin_addr.s_addr = INADDR_ANY;
 
   if (bind(sock, (struct sockaddr *)&server, sizeof(server)) < 0)
@@ -242,7 +242,7 @@ int main(int argc, char **argv)
     exit(4);
   }
 
-  if(!connectServer("localhost", 4001)) {
+  if(!connectServer("localhost", 4000)) {
     if (pthread_create(&updateThread, NULL, updateData, NULL)) {
       printf("ERRO: impossivel criar uma thread\n");
       exit(-1);    

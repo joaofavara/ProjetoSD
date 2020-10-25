@@ -16,6 +16,7 @@ Marcelino Noguero Souza 16011538
 #include <libgen.h>
 #include <sys/stat.h>
 #include <signal.h>
+#include <time.h>
 
 //variaveis para a criacao do socket de dados
 
@@ -25,13 +26,13 @@ struct serverInfo {
 };
 
 struct data {
-    char servername[10];
     int requestType;
     int data;
 };
 
 int s_dados;
 struct serverInfo serverDirectory;
+// pthread_mutex_t locker;
 
 int connectServer(char *nomeServidor, unsigned short portaServidor)
 {
@@ -76,12 +77,12 @@ int sendData(int dado) {
     struct data message;
     message.data = dado;
     message.requestType = 1;
-
+    
     if (send(s_dados, &message, sizeof(message), 0) <= 0){
         return 0;
     }
 
-    printf("Dado enviado: %d\n", dado);
+    printf("Dado enviado: %d\n", message.data);
 
     return 1;
 }
@@ -107,7 +108,7 @@ int receiveData() {
 
 void receiveDirectory() {
 
-    connectServer("localhost", 8000);
+    connectServer("localhost", 5000);
 
     if (recv(s_dados, &serverDirectory, sizeof(serverDirectory), 0) <= 0){
 		printf("Erro ao receber dados\n");
@@ -119,14 +120,25 @@ void receiveDirectory() {
 // MAIN FUNCTION
 int main(){
 
-    signal(SIGINT,encerraCliente);
-    receiveDirectory();
+    time_t t;
+    srand((unsigned) time(&t));
 
-    connectServer(serverDirectory.servername, serverDirectory.port);
-    sendData(10);
-    encerraConexao();
-    
-    connectServer(serverDirectory.servername, serverDirectory.port);
-    receiveData();
-    encerraCliente();
+    signal(SIGINT,encerraCliente);
+
+    //while(1) {
+        receiveDirectory();
+        connectServer(serverDirectory.servername, serverDirectory.port);
+        sendData(rand() % 100);
+        encerraConexao();
+
+        //sleep(1);
+
+        receiveDirectory();
+        connectServer(serverDirectory.servername, serverDirectory.port);
+        receiveData();
+
+        //sleep(1);
+    //}
+
+    // encerraCliente();
 }

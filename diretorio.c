@@ -25,12 +25,10 @@ Marcelino Noguero Souza 16011538
  * Servidor TCP
  */
 
-#define MaxArray 10
 int s;                     /* Socket para aceitar conexoes       */
 
 struct args{
 	int ns;
-	int s;
   char servername[10];
   unsigned short port;
 	int thread_id;
@@ -41,8 +39,6 @@ struct serverInfo {
     unsigned short port;
 };
 
-struct args parameters;
-pthread_t thread_id[MaxArray];
 unsigned short port;
 int countClients = 0;
 
@@ -71,7 +67,9 @@ int main(int argc, char **argv)
 {
 	int ns;
 	struct sockaddr_in client; 
-	struct sockaddr_in server; 
+	struct sockaddr_in server;
+  struct args parameters;
+  pthread_t thread;
 	int namelen;
 
 	signal(SIGINT,encerraCliente);
@@ -108,6 +106,8 @@ int main(int argc, char **argv)
     perror("Listen()");
     exit(4);
   }
+  int port[2] = {8000, 8001};
+  int index = 0; 
 
   while(1)
   {
@@ -118,17 +118,20 @@ int main(int argc, char **argv)
       exit(5);
 	  }
 		parameters.ns = ns;
-		parameters.s = s;
 		parameters.thread_id = countClients;
     strcpy(parameters.servername, "localhost");
-    parameters.port = 8001;
+    parameters.port = port[index];
 
-		if (pthread_create(&thread_id[countClients], NULL, atender_cliente, (void* )&parameters))
+		if (pthread_create(&thread, NULL, atender_cliente, (void* )&parameters))
     {
         printf("ERRO: impossivel criar uma thread\n");
         exit(-1);
     }
 
+    index += 1;
+    if (index == 2) {
+      index = 0;
+    }
 		countClients++;
 	}
 }
