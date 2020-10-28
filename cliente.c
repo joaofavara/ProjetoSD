@@ -28,6 +28,7 @@ struct serverInfo {
 struct data {
     int requestType;
     int data;
+    int client;
 };
 
 int s_dados;
@@ -72,11 +73,12 @@ void encerraCliente() {
     exit(0);
 }
 
-int sendData(int dado) {
+int sendData(int dado, int usuario) {
 
     struct data message;
     message.data = dado;
     message.requestType = 1;
+    message.client = usuario;
     
     if (send(s_dados, &message, sizeof(message), 0) <= 0){
         return 0;
@@ -87,11 +89,12 @@ int sendData(int dado) {
     return 1;
 }
 
-int receiveData() {
+int receiveData(int usuario) {
 
     struct data message;
     int receivedData;
     message.requestType = 2;
+    message.client = usuario;
 
     if (send(s_dados, &message, sizeof(message), 0) <= 0){
         return 0;
@@ -118,7 +121,7 @@ void receiveDirectory() {
 }
 
 // MAIN FUNCTION
-int main(){
+int main(int argc, char *argv[]){
 
     time_t t;
     srand((unsigned) time(&t));
@@ -128,17 +131,17 @@ int main(){
     //while(1) {
         receiveDirectory();
         connectServer(serverDirectory.servername, serverDirectory.port);
-        sendData(rand() % 100);
+        sendData(rand() % 100, atoi(argv[1]));
         encerraConexao();
 
         //sleep(1);
 
         receiveDirectory();
         connectServer(serverDirectory.servername, serverDirectory.port);
-        receiveData();
+        receiveData(atoi(argv[1]));
 
         //sleep(1);
     //}
 
-    // encerraCliente();
+    encerraCliente();
 }
