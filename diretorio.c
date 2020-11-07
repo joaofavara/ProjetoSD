@@ -1,7 +1,12 @@
 /*
-João Pedro Favara 16061921
-Marcelino Noguero Souza 16011538
+Nome: João Pedro Favara RA: 16061921
+Nome: Marcelino Noguero RA: Souza 16011538
+Opcionais funcionando: Projeto Basico, Opcionais: 1, 2, 3, 6, 7,8
+Observações: Não conseguimos encontrar uma maneira de testar o opcional 6; 
+Quando muitos escritores executam juntos, os dados demoram um pouco para replicar os dados.
+Valor do Projeto: 
 */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -21,26 +26,18 @@ Marcelino Noguero Souza 16011538
 #include <sys/stat.h>
 #include <signal.h>
 
-/*
- * Servidor TCP
- */
-
-int s;                     /* Socket para aceitar conexoes       */
+int s;
 
 struct args{
 	int ns;
-  char servername[10];
-  unsigned short port;
-	int thread_id;
+  char nomeServidor[10];
+  unsigned short porta;
 };
 
-struct serverInfo {
-    char servername[10];
-    unsigned short port;
+struct infoServidor {
+    char nomeServidor[10];
+    unsigned short porta;
 };
-
-unsigned short port;
-int countClients = 0;
 
 void encerraCliente() {
     close(s);
@@ -48,39 +45,79 @@ void encerraCliente() {
     exit(0);
 }
 
-void *atender_cliente(void* parameters){
-	struct args args = *((struct args*) parameters);
-  struct serverInfo serverDirectory;
+bool testarServidor(char *nomeServidor, unsigned short portaServidor)
+{
+    unsigned short porta;
+    struct hostent *hostnm;
+    struct sockaddr_in server;
+    int ns;
 
-  strcpy(serverDirectory.servername, args.servername);
-  serverDirectory.port = args.port;
+    hostnm = gethostbyname(nomeServidor);
+
+    if (hostnm == (struct hostent *)0){
+        return false;
+    }
+
+    porta = portaServidor;
+
+    server.sin_family = AF_INET;
+    server.sin_port = htons(porta);
+    server.sin_addr.s_addr = *((unsigned long *)hostnm->h_addr);
+
+    if ((ns = socket(PF_INET, SOCK_STREAM, 0)) < 0){
+        return false;
+    }
+
+    if (connect(ns, (struct sockaddr *)&server, sizeof(server)) < 0){
+        return false;
+    }
+
+    close(ns);
+
+    return true;
+}
+
+void *atender_cliente(void* parametros){
+	struct args args = *((struct args*) parametros);
+  struct infoServidor serverDirectory;
+
+  strcpy(serverDirectory.nomeServidor, args.nomeServidor);
+  serverDirectory.porta = args.porta;
 
 	if (send(args.ns, &serverDirectory, sizeof(serverDirectory), 0) <= 0){
-		printf("Erro ao receber dados de %d\n", args.thread_id);
+		printf("Erro ao enviar dados\n");
 	}
+  
+  printf("Informacao de servidor enviada!\n");
 
 	close(args.ns);
 	pthread_exit(NULL);
 }
 
-int main(int argc, char **argv)
+int proximoIp(int indice){
+  indice += 1;
+  if (indice == 2) {
+    indice = 0;
+  }
+
+  return indice;
+}
+
+int main()
 {
 	int ns;
 	struct sockaddr_in client; 
 	struct sockaddr_in server;
-  struct args parameters;
+  struct args parametros;
   pthread_t thread;
 	int namelen;
+  unsigned short porta;
+  int portas[2] = {8000, 8001};
+  int indice = 0; 
 
 	signal(SIGINT,encerraCliente);
 
-  if (argc != 2)
-  {
-    fprintf(stderr, "\nUse: %s porta\n", argv[0]);
-    exit(1);
-  }
-
-  port = (unsigned short) atoi(argv[1]);
+  porta = (unsigned short) 5000;
 
   if ((s = socket(PF_INET, SOCK_STREAM, 0)) < 0)
   {
@@ -89,11 +126,10 @@ int main(int argc, char **argv)
   }
 
   server.sin_family = AF_INET;   
-  server.sin_port   = htons(port);       
+  server.sin_port   = htons(porta);       
   server.sin_addr.s_addr = INADDR_ANY;
 
-  printf("\nPorta utilizada: %d", ntohs(server.sin_port));
-  printf("\nIP utilizado: %d\n\n", ntohs(server.sin_addr.s_addr));
+  fprintf(stderr,"\nDiretorio executando na porta: %d\n", ntohs(server.sin_port));
 
   if (bind(s, (struct sockaddr *)&server, sizeof(server)) < 0)
   {
@@ -106,8 +142,6 @@ int main(int argc, char **argv)
     perror("Listen()");
     exit(4);
   }
-  int port[2] = {8000, 8001};
-  int index = 0; 
 
   while(1)
   {
@@ -117,21 +151,27 @@ int main(int argc, char **argv)
       perror("Accept()");
       exit(5);
 	  }
-		parameters.ns = ns;
-		parameters.thread_id = countClients;
-    strcpy(parameters.servername, "localhost");
-    parameters.port = port[index];
 
-		if (pthread_create(&thread, NULL, atender_cliente, (void* )&parameters))
+    if (testarServidor("localhost", portas[indice])) {
+      parametros.porta = portas[indice];
+    } else {
+      indice = proximoIp(indice);
+      if (testarServidor("localhost", portas[indice])) {
+        parametros.porta = portas[indice];
+      } else {
+        parametros.porta = 0;
+      }
+    }
+
+		parametros.ns = ns;
+    strcpy(parametros.nomeServidor, "localhost");
+
+		if (pthread_create(&thread, NULL, atender_cliente, (void* )&parametros))
     {
         printf("ERRO: impossivel criar uma thread\n");
         exit(-1);
     }
 
-    index += 1;
-    if (index == 2) {
-      index = 0;
-    }
-		countClients++;
+    indice = proximoIp(indice);
 	}
 }

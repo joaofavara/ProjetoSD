@@ -5,7 +5,7 @@ all:
 	$(CC) -pthread diretorio.c -o diretorio
 	$(CC) -pthread servidor1.c -o server1
 	$(CC) -pthread servidor2.c -o server2
-	$(JCC) Principal.java
+	$(JCC) Iniciador.java
 
 clean:
 	rm client
